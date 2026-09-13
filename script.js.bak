@@ -1,0 +1,8 @@
+const whatsappButton = document.querySelector('.whatsapp-float');
+
+if (whatsappButton) {
+	whatsappButton.addEventListener('click', (event) => {
+		event.preventDefault();
+		window.open(whatsappButton.href, '_blank', 'noopener,noreferrer');
+	});
+}
