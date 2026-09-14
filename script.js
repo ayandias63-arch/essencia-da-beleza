@@ -1,5 +1,6 @@
 const CMS_BASE_URL = 'https://yan-cms.onrender.com';
 const CMS_CONTENT_URL = `${CMS_BASE_URL}/api/public/site-content/essencia-da-beleza`;
+const CMS_ARTICLES_URL = `${CMS_BASE_URL}/api/public/articles/essencia-da-beleza`;
 
 const getValue = (source, paths) => {
 	for (const path of paths) {
@@ -22,6 +23,102 @@ const setText = (element, value) => {
 const setImage = (element, value) => {
 	const url = resolveCmsUrl(value);
 	if (typeof url === 'string' && url.trim()) element.src = url;
+};
+
+const getArticleSummary = (article) => {
+	if (article.excerpt) return article.excerpt;
+	return String(article.content || '').replace(/<[^>]*>/g, '').trim().slice(0, 150);
+};
+
+const createArticleModal = () => {
+	const modal = document.createElement('div');
+	modal.className = 'article-modal';
+	modal.setAttribute('aria-hidden', 'true');
+	modal.innerHTML = `
+		<div class="article-modal-backdrop" data-modal-close></div>
+		<article class="article-modal-content" role="dialog" aria-modal="true" aria-labelledby="article-modal-title">
+			<button class="article-modal-close" type="button" aria-label="Fechar artigo" data-modal-close>&times;</button>
+			<span class="article-category" id="article-modal-category"></span>
+			<h2 id="article-modal-title"></h2>
+			<div class="article-modal-body"></div>
+		</article>
+	`;
+	document.body.append(modal);
+
+	modal.addEventListener('click', (event) => {
+		if (event.target.matches('[data-modal-close]')) {
+			modal.classList.remove('is-open');
+			modal.setAttribute('aria-hidden', 'true');
+			document.body.classList.remove('modal-open');
+		}
+	});
+
+	return modal;
+};
+
+const openArticleModal = (modal, article) => {
+	modal.querySelector('#article-modal-category').textContent = article.category || 'Artigo';
+	modal.querySelector('#article-modal-title').textContent = article.title || '';
+	modal.querySelector('.article-modal-body').innerHTML = article.content || '<p>Este artigo não possui conteúdo.</p>';
+	modal.classList.add('is-open');
+	modal.setAttribute('aria-hidden', 'false');
+	document.body.classList.add('modal-open');
+	modal.querySelector('.article-modal-close').focus();
+};
+
+const renderArticles = (articles) => {
+	const container = document.querySelector('#articles-container');
+	if (!container) return;
+	const modal = createArticleModal();
+
+	articles.filter((article) => article?.status === 'published').forEach((article) => {
+		const card = document.createElement('article');
+		card.className = 'article-card';
+
+		const imageContainer = document.createElement('div');
+		imageContainer.className = 'article-image';
+		if (article.image) {
+			const image = document.createElement('img');
+			image.src = resolveCmsUrl(article.image);
+			image.alt = article.title || 'Imagem do artigo';
+			imageContainer.append(image);
+		} else {
+			const placeholder = document.createElement('span');
+			placeholder.textContent = 'Imagem do artigo';
+			imageContainer.append(placeholder);
+		}
+
+		const content = document.createElement('div');
+		content.className = 'article-content';
+		content.innerHTML = `
+			<span class="article-category"></span>
+			<h3></h3>
+			<p></p>
+			<a href="#" class="article-link">Ler artigo →</a>
+		`;
+		content.querySelector('.article-category').textContent = article.category || 'Artigo';
+		content.querySelector('h3').textContent = article.title || 'Artigo sem título';
+		content.querySelector('p').textContent = getArticleSummary(article);
+		content.querySelector('.article-link').addEventListener('click', (event) => {
+			event.preventDefault();
+			openArticleModal(modal, article);
+		});
+
+		card.append(imageContainer, content);
+		container.append(card);
+	});
+};
+
+const loadArticles = async () => {
+	try {
+		const response = await fetch(CMS_ARTICLES_URL, { headers: { Accept: 'application/json' } });
+		if (!response.ok) return;
+		const payload = await response.json();
+		const articles = Array.isArray(payload) ? payload : payload.value || payload.articles || payload.data || [];
+		if (Array.isArray(articles)) renderArticles(articles);
+	} catch (error) {
+		console.warn('Yan CMS no disponible; se conserva el resto del sitio.', error);
+	}
 };
 
 const applySiteContent = (payload) => {
@@ -109,3 +206,4 @@ if (whatsappButton) {
 }
 
 loadCmsContent();
+loadArticles();
