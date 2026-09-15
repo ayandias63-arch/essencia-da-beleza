@@ -59,7 +59,22 @@ const createArticleModal = () => {
 const openArticleModal = (modal, article) => {
 	modal.querySelector('#article-modal-category').textContent = article.category || 'Artigo';
 	modal.querySelector('#article-modal-title').textContent = article.title || '';
-	modal.querySelector('.article-modal-body').innerHTML = article.content || '<p>Este artigo não possui conteúdo.</p>';
+	const body = modal.querySelector('.article-modal-body');
+	const content = typeof article.content === 'string' ? article.content.replace(/\r\n?/g, '\n') : '';
+	const paragraphs = content.split(/\n[ \t]*\n(?:[ \t]*\n)*/).filter((paragraph) => paragraph.trim());
+	body.replaceChildren();
+
+	if (!paragraphs.length) {
+		const paragraph = document.createElement('p');
+		paragraph.textContent = 'Este artigo não possui conteúdo.';
+		body.append(paragraph);
+	} else {
+		paragraphs.forEach((paragraphText) => {
+			const paragraph = document.createElement('p');
+			paragraph.textContent = paragraphText;
+			body.append(paragraph);
+		});
+	}
 	modal.classList.add('is-open');
 	modal.setAttribute('aria-hidden', 'false');
 	document.body.classList.add('modal-open');
